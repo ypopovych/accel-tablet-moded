@@ -1,6 +1,6 @@
 COMPILER  = cc
 CFLAGS    = -g -O3 -MMD -MP -Wall -Wextra -Winit-self -Wno-missing-field-initializers
-LDFLAGS   = ""
+LDFLAGS   = -Wl -s
 TARGET    = ./bin/accel-tablet-moded
 SRCDIR    = .
 SOURCES   = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/devices/*.c)
@@ -13,7 +13,7 @@ $(TARGET): $(OBJECTS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	-mkdir -p $(dir $@)
-	$(COMPILER) $(CFLAGS) $(INCLUDE) -o $@ -c $<
+	$(COMPILER) $(CFLAGS) -o $@ -c $<
 
 all: clean $(TARGET)
 
