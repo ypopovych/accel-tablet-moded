@@ -106,9 +106,9 @@ int laptop_device_get_model(char **model) {
   if (result == NULL) {
     return -1;
   }
-  size_t len = strlen(result);
-  *model = (char *)malloc(len+1);
-  strncpy(*model, result, len+1);
+  size_t len = strlen(result)+1;
+  *model = (char *)malloc(len);
+  strncpy(*model, result, len);
   return len-1;
 }
 
