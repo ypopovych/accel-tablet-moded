@@ -11,27 +11,18 @@
 #include <linux/uinput.h>
 
 #include "device.h"
-#include "minibook_x.h"
+#include "devices/minibook_x.h"
+#include "debug.h"
 
 #define VERSION "0.1.0"
 
 #define CLOSE_OUTPUT(out) ioctl(out, UI_DEV_DESTROY); close(out)
 
-static const laptop_device_factory_t* all_devices[] = {
+static const laptop_device_factory_t* G_all_devices[] = {
   &device_minibook_x
 };
 
-static volatile bool is_debug = false;
-static volatile bool is_running = false;
-
-static void debug(const char *fmt, ...) {
-    if (is_debug) {
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        va_end(args);
-    }
-}
+static volatile bool G_is_running = false;
 
 static int exit_with_error(char* error) {
   fprintf(stderr, "%s\n", error);
@@ -52,7 +43,7 @@ static void print_help() {
 static int parse_args(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-d") == 0) {
-            is_debug = true;
+            set_debug_mode_enabled(true);
             return -1;
         } else if (strcmp(argv[i], "--version") == 0) {
             printf("%s\n", VERSION);
@@ -73,7 +64,7 @@ static int parse_args(int argc, char *argv[]) {
 __attribute__((noinline))
 static void sigint_handler(int signum) {
     (void)(signum);
-    is_running = false;
+    G_is_running = false;
 }
 
 // Emit the event
@@ -242,11 +233,11 @@ int main(int argc, char *argv[]) {
     
     debug("Laptop model: %s\n", laptop_model);
     
-    int devices_len = sizeof(all_devices) / sizeof(laptop_device_factory_t*);
+    int devices_len = sizeof(G_all_devices) / sizeof(laptop_device_factory_t*);
     const laptop_device_factory_t* device_factory = NULL;
     for (int i = 0; i < devices_len; i++) {
-      if (all_devices[i]->is_current_device(laptop_model)) {
-        device_factory = all_devices[i];
+      if (G_all_devices[i]->is_current_device(laptop_model)) {
+        device_factory = G_all_devices[i];
         break;
       }
     }
@@ -271,10 +262,10 @@ int main(int argc, char *argv[]) {
     accel_state_t screen_state;
     accel_state_t base_state;
     
-    is_running = true;
+    G_is_running = true;
     error = NULL;
     
-    while (is_running) {
+    while (G_is_running) {
       if (!read_lid_switch(lid_switch_fd, &is_lid_closed, &error)) {
         break;
       }
@@ -324,7 +315,7 @@ int main(int argc, char *argv[]) {
       }
     }
     
-    is_running = false;
+    G_is_running = false;
     
     CLOSE_OUTPUT(output);
     close(lid_switch_fd);
