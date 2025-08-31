@@ -16,6 +16,11 @@ static const laptop_device_factory_t* G_all_devices[] = {
 
 static volatile bool G_is_running = false;
 
+typedef struct settings_s {
+    bool   debug;
+    double timeout;
+} settings_t;
+
 inline static int exit_with_error(char* error) {
   fprintf(stderr, "%s\n", error);
   free(error);
@@ -24,23 +29,39 @@ inline static int exit_with_error(char* error) {
 
 // Print the help message
 inline static void print_help() {
-    printf("Usage: accel-tablet-moded [-d] [-h] [--version]\n");
+    printf("Usage: accel-tablet-moded [-f <time>] [-d|--debug] [-h|--help] [-v|--version]\n");
     printf("Options:\n");
-    printf("  -d: Enable debug mode\n");
-    printf("  -h: Print this help message\n");
-    printf("  --version: Print the version\n");
+    printf("  -f <time>: Poll time in seconds. Default is 1.0\n");
+    printf("  -d, --debug: Enable debug mode\n");
+    printf("  -h, --help: Print this help message\n");
+    printf("  -v, --version: Print the version\n");
 }
 
 // Parse the command line arguments
-inline static int parse_args(int argc, char *argv[]) {
+inline static int parse_args(int argc, char *argv[], settings_t *settings) {
+    settings->debug = false;
+    settings->timeout = 1.0;
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0) {
-            set_debug_mode_enabled(true);
-            return -1;
-        } else if (strcmp(argv[i], "--version") == 0) {
+        if (strncmp(argv[i], "-f", 2) == 0) {
+            char* value;
+            if (strlen(argv[i]) > 2) {
+                value = argv[i] + 2;
+            } else if (i+1 < argc) {
+                value = argv[++i];
+            } else {
+                fprintf(stderr, "Option -f doesn't have a value\n");
+                return EXIT_FAILURE;
+            }
+            if (sscanf(value, "%lf", &settings->timeout) != 1) {
+                fprintf(stderr, "Value for option -f isn't float: %s\n", value);
+                return EXIT_FAILURE;
+            }
+        } else if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "-d") == 0) {
+            settings->debug = true;
+        } else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
             printf("%s\n", VERSION);
             return EXIT_SUCCESS;
-        } else if (strcmp(argv[i], "-h") == 0) {
+        } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_help();
             return EXIT_SUCCESS;
         } else {
@@ -93,10 +114,12 @@ static void sigint_handler(int signum) {
 // Main
 int main(int argc, char *argv[]) {
     // Parse the command line arguments
-    int arg_result = parse_args(argc, argv);
+    settings_t settings;
+    int arg_result = parse_args(argc, argv, &settings);
     if (arg_result >= 0) {
         return arg_result;
     }
+    set_debug_mode_enabled(settings.debug);
     
     char *error = NULL;
     
@@ -133,8 +156,8 @@ int main(int argc, char *argv[]) {
     error = NULL;
     
     struct timespec timeout = {
-        .tv_sec = 1,
-        .tv_nsec = 0
+        .tv_sec = trunc(settings.timeout),
+        .tv_nsec = trunc(fmod(settings.timeout, 1.0) * 1000000000.0)
     };
     
     while (G_is_running) {
