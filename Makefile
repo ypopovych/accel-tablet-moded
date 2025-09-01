@@ -17,5 +17,13 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 
 all: clean $(TARGET)
 
+install: $(TARGET)
+	-cp -f $(TARGET) /usr/bin/
+	-chmod 755 /usr/bin/$(notdir $(TARGET))
+	
+dinit: install
+	-cp -f services/dinit.service /usr/lib/dinit.d/$(notdir $(TARGET))
+	-cp -f services/dinit.conf /etc/default/$(notdir $(TARGET))
+
 clean:
 	-rm -f $(OBJECTS) $(TARGET)

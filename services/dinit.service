@@ -1,0 +1,6 @@
+type = process
+command = /usr/bin/accel-tablet-moded -f $UPDATE_FREQUENCY $/DEBUG
+env-file = /etc/default/accel-tablet-moded
+depends-on = iio-sensor-proxy
+smooth-recovery = true
+
