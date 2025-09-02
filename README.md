@@ -36,7 +36,7 @@ The architecture is designed to be extensible for additional devices. See [Addin
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/ypopovych/accel-tablet-moded.git
 cd accel-tablet-moded
 
 # Build the daemon
