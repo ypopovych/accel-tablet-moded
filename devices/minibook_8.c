@@ -64,7 +64,7 @@ static bool create(laptop_device_t **device, char **error) {
         sleep(1); // Wait for the device
         debug("Checking if the base accelerometer is enabled\n");
         if (!iio_device_is_available(1)) {
-            make_errorf(error, "Cannot enable the base accelerometer: id = 1");
+            make_error(error, "Cannot enable the base accelerometer: id = 1");
             return false;
         }
     }
