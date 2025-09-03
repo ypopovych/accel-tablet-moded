@@ -4,41 +4,41 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "minibook_x.h"
+#include "minibook_8.h"
 #include "../debug.h"
 
-typedef struct minibookx_s {
+typedef struct minibook8_s {
     laptop_device_t device;
     accel_device_t screen;
     accel_device_t base;
-} minibookx_t;
+} minibook8_t;
 
 __attribute__((noinline))
 static bool read_screen_accel(const laptop_device_t *self, accel_state_t *state, char **error) {
-    return iio_device_accel_read_state(&((minibookx_t*)self)->screen, state, error);
+    return iio_device_accel_read_state(&((minibook8_t*)self)->screen, state, error);
 }
 
 __attribute__((noinline))
 static bool read_base_accel(const laptop_device_t *self, accel_state_t *state, char **error) {
-    return iio_device_accel_read_state(&((minibookx_t*)self)->base, state, error);
+    return iio_device_accel_read_state(&((minibook8_t*)self)->base, state, error);
 }
 
 __attribute__((noinline))
 static void destroy(struct laptop_device_s *self) {
-    iio_device_accel_close(&((minibookx_t*)self)->screen);
-    iio_device_accel_close(&((minibookx_t*)self)->base);
-    free((minibookx_t*)self);
+    iio_device_accel_close(&((minibook8_t*)self)->screen);
+    iio_device_accel_close(&((minibook8_t*)self)->base);
+    free((minibook8_t*)self);
 }
 
 __attribute__((noinline))
 static bool is_current_device(const char* model, size_t model_len) {
-    debug("Checking if the device is a Minibook X\n");
-    return model_len >= 10 && strncmp(model, "MiniBook X", 10) == 0;
+    debug("Checking if the device is a MiniBook 8\n");
+    return model_len >= 9 && strncmp(model, "MiniBook\n", 9) == 0;
 }
 
 __attribute__((noinline))
 static bool create(laptop_device_t **device, char **error) {
-    debug("Creating the Minibook X device\n");
+    debug("Creating the MiniBook 8 device\n");
     // Check that we have screen accelerometeer
     if (!iio_device_is_available(0)) {
       make_error(error, "Cannot find the screen accelerometer: id = 0");
@@ -46,43 +46,31 @@ static bool create(laptop_device_t **device, char **error) {
     }
     // Check that base accelerometer isn't enabled
     if (!iio_device_is_available(1)) {
+        // Try to enable the base accelerometer
+        // Reload the i2c driver
+        // rmmod bmc150_accel_i2c
+        // modprobe bmc150_accel_i2c
         debug("Enabling the base accelerometer\n");
-        uint8_t i2c = 0;
-        debug("Getting the i2c port for the screen accelerometer\n");
-        if (!iio_device_get_i2c_port(0, &i2c, error)) {
+        debug("Unloading the bmc150_accel_i2c\n");
+        if (system("rmmod bmc150_accel_i2c") == -1) {
+            make_errorf(error, "Cannot unload the bmc150_accel_i2c: %s", strerror(errno));
             return false;
         }
-        if (i2c > 0) {
-            i2c--;
-        }
-        char buffer[256];
-        // Enable the accelerometer
-        // echo mxc4005 0x15 > /sys/bus/i2c/devices/i2c-0/new_device
-        debug("Enabling the base accelerometer\n");
-        sprintf(buffer, "/sys/bus/i2c/devices/i2c-%d/new_device", (int)i2c);
-        int fd = open(buffer, O_WRONLY);
-        debug("Opening the i2c new device interface\n");
-        if (fd <= 0) {
-            make_errorf(error, "Cannot open the %s, error: %s", buffer, strerror(errno));
+        debug("Loading the bmc150_accel_i2c\n");
+        if (system("modprobe bmc150_accel_i2c") == -1) {
+            make_errorf(error, "Cannot load the bmc150_accel_i2c: %s", strerror(errno));
             return false;
         }
-        debug("Writing 'mxc4005 0x15' to the i2c new device interface\n");
-        if (write(fd, "mxc4005 0x15\n", 13) != 13) {
-            make_errorf(error, "Cannot write 'mxc4005 0x15' to the %s", buffer);
-            return false;
-        }
-        close(fd);
-        debug("Waiting for the device to be enabled\n");
         sleep(1); // Wait for the device
         debug("Checking if the base accelerometer is enabled\n");
         if (!iio_device_is_available(1)) {
-            make_errorf(error, "Cannot enable the base accelerometer: id = 1, i2c = %d", (int)i2c);
+            make_errorf(error, "Cannot enable the base accelerometer: id = 1");
             return false;
         }
     }
     debug("Base accelerometer is enabled\n");
     // Accelerometers enabled
-    minibookx_t *mdevice = (minibookx_t*)malloc(sizeof(minibookx_t));
+    minibook8_t *mdevice = (minibook8_t*)malloc(sizeof(minibook8_t));
     if (!(iio_device_accel_open(0, &mdevice->screen, error) && iio_device_accel_open(1, &mdevice->base, error))) {
         return false;
     }
@@ -93,7 +81,7 @@ static bool create(laptop_device_t **device, char **error) {
     return true;
 }
 
-const laptop_device_factory_t device_minibook_x = {
+const laptop_device_factory_t device_minibook_8 = {
     .is_current_device = &is_current_device,
     .create = &create
 };

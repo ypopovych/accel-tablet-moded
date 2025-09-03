@@ -6,12 +6,14 @@
 #include "input.h"
 #include "device.h"
 #include "devices/minibook_x.h"
+#include "devices/minibook_8.h"
 #include "debug.h"
 
 #define VERSION "0.1.0"
 
 static const laptop_device_factory_t* G_all_devices[] = {
-  &device_minibook_x
+  &device_minibook_x,
+  &device_minibook_8
 };
 
 static volatile bool G_is_running = false;
